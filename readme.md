@@ -6,7 +6,7 @@
 ![Language](https://img.shields.io/badge/language-C%2B%2B17-blue.svg)
 ![Dependencies](https://img.shields.io/badge/dependencies-None-brightgreen.svg)
 ![Precision](https://img.shields.io/badge/precision-Long%20Double-orange.svg)
-![TargetJurnal](Sinta 6)
+
 
 ## 📜 Executive Summary
 
