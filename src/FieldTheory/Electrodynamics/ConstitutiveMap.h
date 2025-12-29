@@ -30,20 +30,22 @@ namespace Electrodynamics {
 
     public:
         ConstitutiveMap() 
-            : levi_civita_(Tensor4C::LeviCivita()), 
-              skewon_engine_() {
-            current_alpha_ = Complex(0.0L);
-            current_velocity_ = Vector3(3, 0.0L);
+            : chi_principal_(),
+              chi_total_(),
+              skewon_engine_(),
+              current_alpha_(0.0L),
+              current_velocity_(3, 0.0L),
+              levi_civita_(Tensor4C::LeviCivita()) {
         }
 
 
         explicit ConstitutiveMap(const Tensor4C& material_tensor) 
             : chi_principal_(material_tensor), 
               chi_total_(material_tensor), 
-              levi_civita_(Tensor4C::LeviCivita()),
-              skewon_engine_() {
-            current_alpha_ = Complex(0.0L);
-            current_velocity_ = Vector3(3, 0.0L);
+              skewon_engine_(),
+              current_alpha_(0.0L),
+              current_velocity_(3, 0.0L),
+              levi_civita_(Tensor4C::LeviCivita()) {
         }
 
         void updateState(Complex alpha, const Vector3& velocity) {

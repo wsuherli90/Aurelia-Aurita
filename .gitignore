@@ -1,0 +1,17 @@
+# Build artifacts
+build/
+*.o
+*.a
+*.so
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# IDE folders
+.vscode/
+.idea/
+
+# Output files
+*.vtk

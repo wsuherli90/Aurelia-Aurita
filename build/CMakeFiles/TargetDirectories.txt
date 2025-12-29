@@ -1,3 +1,0 @@
-/home/runner/work/Aurelia-Aurita/Aurelia-Aurita/build/CMakeFiles/AureliaSim.dir
-/home/runner/work/Aurelia-Aurita/Aurelia-Aurita/build/CMakeFiles/edit_cache.dir
-/home/runner/work/Aurelia-Aurita/Aurelia-Aurita/build/CMakeFiles/rebuild_cache.dir

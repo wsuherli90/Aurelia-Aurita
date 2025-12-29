@@ -26,12 +26,13 @@ namespace Manifold {
 
         void compute(MetricTensor& metric_engine, PointTM& u) {
             Real h = 1.0e-4L; 
+            Real inv_12h = 1.0L / (12.0L * h);
             Vector3 original_y = u.y();
 
             for (size_t k = 0; k < 3; ++k) {
                 
     
-                Vector3 y_p2 = original_y; y_p2[k] += 2.0 * h;
+                Vector3 y_p2 = original_y; y_p2[k] += 2.0L * h;
                 u.set_y(y_p2); metric_engine.compute(u);
                 Matrix3 g_p2 = metric_engine.covariant();
 
@@ -43,14 +44,19 @@ namespace Manifold {
                 u.set_y(y_m1); metric_engine.compute(u);
                 Matrix3 g_m1 = metric_engine.covariant();
 
-                Vector3 y_m2 = original_y; y_m2[k] -= 2.0 * h;
+                Vector3 y_m2 = original_y; y_m2[k] -= 2.0L * h;
                 u.set_y(y_m2); metric_engine.compute(u);
                 Matrix3 g_m2 = metric_engine.covariant();
 
-                Matrix3 dg_dy = (g_m2 * -1.0 + g_p2 + g_p1 * 8.0 - g_m1 * 8.0) * (1.0 / (12.0 * h));
-
-
-                data_[k] = dg_dy * 0.5L;
+                // Optimized: compute derivative in-place to avoid temporary matrices
+                // dg/dy = (-g_p2 + 8*g_p1 - 8*g_m1 + g_m2) / (12*h)
+                // C_ijk = 0.5 * dg_ij/dy_k
+                for (size_t i = 0; i < 3; ++i) {
+                    for (size_t j = 0; j < 3; ++j) {
+                        Real dg_ij = (-g_p2(i,j) + 8.0L*g_p1(i,j) - 8.0L*g_m1(i,j) + g_m2(i,j)) * inv_12h;
+                        data_[k](i, j) = dg_ij * 0.5L;
+                    }
+                }
             }
 
 

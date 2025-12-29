@@ -46,22 +46,29 @@ namespace Polymer {
 
             if (y_mag < 1.0e-9L) return y_mag;
 
+            // Cache y components to avoid repeated vector access in integrand
+            const Real y0 = y[0], y1 = y[1], y2 = y[2];
+            const Real scale = microscopic_scale_;
+
             auto integrand = [&](Real theta, Real phi) -> Real {
-
+                // Compute direction components without allocating Vector3
                 Real sin_t = std::sin(theta);
-                Vector3 n = {
-                    sin_t * std::cos(phi),
-                    sin_t * std::sin(phi),
-                    std::cos(theta)
-                };
+                Real cos_t = std::cos(theta);
+                Real cos_p = std::cos(phi);
+                Real sin_p = std::sin(phi);
+                
+                Real nx = sin_t * cos_p;
+                Real ny = sin_t * sin_p;
+                Real nz = cos_t;
 
-                Real projection = std::abs(y.dot(n));
-                Real extension = projection * microscopic_scale_;
-
+                // Inline dot product computation
+                Real projection = std::abs(y0 * nx + y1 * ny + y2 * nz);
+                Real extension = projection * scale;
 
                 Real energy = wlc_model_.computeFreeEnergy(extension);
 
-                return odf_structure_.evaluate(n) * energy;
+                // Use optimized ODF evaluate without Vector allocation
+                return odf_structure_.evaluate(nx, ny, nz) * energy;
             };
 
             Real total_energy = Aurelia::Math::Calculus::GaussLegendre::integrateSpherical(integrand);

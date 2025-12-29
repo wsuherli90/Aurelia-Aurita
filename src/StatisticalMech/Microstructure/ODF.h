@@ -58,6 +58,14 @@ namespace Microstructure {
 
 
         Real evaluate(const Vector3& n) const {
+            return evaluate(n[0], n[1], n[2]);
+        }
+
+        /**
+         * @brief Optimized evaluation using raw components to avoid Vector allocation.
+         * Use this in hot loops (e.g., integration) for better performance.
+         */
+        Real evaluate(Real nx, Real ny, Real nz) const {
             if (populations_.empty()) {
 
                 return 1.0L / (4.0L * Aurelia::Config::PI);
@@ -67,8 +75,8 @@ namespace Microstructure {
             Real total_weight = 0.0L;
 
             for (const auto& pop : populations_) {
-
-                Real dot_prod = pop.mu.dot(n);
+                // Inline dot product computation to avoid Vector overhead
+                Real dot_prod = pop.mu[0] * nx + pop.mu[1] * ny + pop.mu[2] * nz;
                 
 
                 Real pdf = pop.normC * std::exp(pop.kappa * dot_prod);
@@ -87,12 +95,11 @@ namespace Microstructure {
    
         Real evaluateSpherical(Real theta, Real phi) const {
             Real sin_t = std::sin(theta);
-            Vector3 n = {
-                sin_t * std::cos(phi),
-                sin_t * std::sin(phi),
-                std::cos(theta)
-            };
-            return evaluate(n);
+            Real cos_t = std::cos(theta);
+            Real cos_p = std::cos(phi);
+            Real sin_p = std::sin(phi);
+            // Use optimized evaluate without Vector allocation
+            return evaluate(sin_t * cos_p, sin_t * sin_p, cos_t);
         }
 
         size_t numPopulations() const { return populations_.size(); }

@@ -135,6 +135,7 @@ namespace Morphogenesis {
                        const Vector3& flow_velocity,
                        const Matrix3& D_flow_velocity) { 
 
+            (void)flow_velocity;  // Suppress unused parameter warning (reserved for future use)
             Matrix3 g_old = g_engine.covariant();
             Matrix3 g_inv = g_engine.contravariant();
             Matrix3 R_ij = computeRicciTensor(u, conn, g_engine);
