@@ -1,7 +1,5 @@
 
-# Tugas Pengelolaan Citra S1 Teknik Informatika Universitas Bina Sarana Informatika
-
-# Aurelia Finslerian Field Theory: A Geometric Active Matter Simulation
+# Aurelia Finslerian Field Theory: A Geometric Active Matter Simulations
 
 ![Language](https://img.shields.io/badge/language-C%2B%2B17-blue.svg)
 ![Dependencies](https://img.shields.io/badge/dependencies-None-brightgreen.svg)
