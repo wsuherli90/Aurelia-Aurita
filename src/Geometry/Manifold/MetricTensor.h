@@ -1,5 +1,3 @@
-
-
 #ifndef AURELIA_GEOMETRY_METRIC_TENSOR_H
 #define AURELIA_GEOMETRY_METRIC_TENSOR_H
 
@@ -18,7 +16,7 @@ namespace Geometry {
 namespace Manifold {
 
     using Real = long double;
-    using Matrix3 = Aurelia::Math::Matrix<Real>;
+    using Matrix3 = Aurelia::Math::Matrix<Real, 3, 3>;
     using DiffEngine = Aurelia::Math::Calculus::NumericalDiff;
     using FinslerFunction = std::function<Real(const PointTM&)>;
 
@@ -101,4 +99,4 @@ namespace Manifold {
 } 
 } 
 
-#endif 
+#endif

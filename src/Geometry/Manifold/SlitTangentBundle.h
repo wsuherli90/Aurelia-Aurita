@@ -15,7 +15,7 @@ namespace Manifold {
 
     using Real = long double;
 
-    using Vector3 = Aurelia::Math::Vector<Real>;
+    using Vector3 = Aurelia::Math::Vector<Real, 3>;
 
     class PointTM {
     private:

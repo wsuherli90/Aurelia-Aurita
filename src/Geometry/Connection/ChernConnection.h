@@ -16,8 +16,8 @@ namespace Geometry {
 namespace Connection {
 
     using Real = long double;
-    using Vector3 = Aurelia::Math::Vector<Real>;
-    using Matrix3 = Aurelia::Math::Matrix<Real>;
+    using Vector3 = Aurelia::Math::Vector<Real, 3>;
+    using Matrix3 = Aurelia::Math::Matrix<Real, 3, 3>;
     using Tensor3 = std::vector<Matrix3>; 
     using Diff = Aurelia::Math::Calculus::NumericalDiff;
 
@@ -195,4 +195,4 @@ namespace Connection {
 }
 } 
 
-#endif 
+#endif

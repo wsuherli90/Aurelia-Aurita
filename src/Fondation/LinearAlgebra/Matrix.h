@@ -1,117 +1,103 @@
 #ifndef AURELIA_FOUNDATION_MATRIX_H
 #define AURELIA_FOUNDATION_MATRIX_H
 
-#include <vector>
+#include <array>
 #include <iostream>
 #include <iomanip>
 #include <cmath>
 #include <stdexcept>
-#include <algorithm> 
+#include <algorithm>
 #include <type_traits>
-
-
-#include "../../../config/BiophysicalConstants.h"
+#include "Vector.h" 
 
 namespace Aurelia {
 namespace Math {
 
-    template <typename T>
+
+    template <typename T, size_t Rows, size_t Cols>
     class Matrix {
         static_assert(std::is_floating_point<T>::value, 
-            "Matrix<T> can only be instantiated with floating point types (float, double, long double).");
+            "Matrix<T> requires floating point types.");
 
     private:
-        size_t rows_;
-        size_t cols_;
-        std::vector<T> data_; 
-        inline size_t idx(size_t r, size_t c) const {
-            return r * cols_ + c;
+        std::array<T, Rows * Cols> data_;
+
+
+        constexpr size_t idx(size_t r, size_t c) const {
+            return r * Cols + c;
         }
 
     public:
-        Matrix() : rows_(0), cols_(0) {}
-        Matrix(size_t r, size_t c) : rows_(r), cols_(c) {
-             data_.resize(r * c, T(0)); 
-        }
-        Matrix(size_t r, size_t c, const T& val) : rows_(r), cols_(c), data_(r * c, val) {}
+
+        Matrix() { data_.fill(T(0)); }
+
+        explicit Matrix(T val) { data_.fill(val); }
+
+
         Matrix(std::initializer_list<std::initializer_list<T>> list) {
-            rows_ = list.size();
-            cols_ = (rows_ > 0) ? list.begin()->size() : 0;
-            data_.reserve(rows_ * cols_); 
-
-            for (const auto& row : list) {
-                if (row.size() != cols_) 
-                    throw std::invalid_argument("Matrix: Jagged initializer list.");
-                data_.insert(data_.end(), row.begin(), row.end());
+            size_t r = 0;
+            for (const auto& row_list : list) {
+                size_t c = 0;
+                for (const auto& val : row_list) {
+                    if (r < Rows && c < Cols) data_[idx(r, c)] = val;
+                    c++;
+                }
+                r++;
             }
         }
 
-        Matrix(const std::vector<std::vector<T>>& grid) {
-            rows_ = grid.size();
-            cols_ = (rows_ > 0) ? grid[0].size() : 0;
-            data_.reserve(rows_ * cols_);
+        Matrix(const Matrix&) = default;
+        Matrix& operator=(const Matrix&) = default;
 
-            for (const auto& row : grid) {
-                if (row.size() != cols_) 
-                    throw std::invalid_argument("Matrix: Jagged initialization vector.");
-                data_.insert(data_.end(), row.begin(), row.end());
-            }
-        }
 
-        size_t rows() const { return rows_; }
-        size_t cols() const { return cols_; }
-
+        
+        size_t rows() const { return Rows; }
+        size_t cols() const { return Cols; }
 
         T& operator()(size_t r, size_t c) {
             #ifdef DEBUG_MATH
-            if (r >= rows_ || c >= cols_) throw std::out_of_range("Matrix index out of bounds");
+            if (r >= Rows || c >= Cols) throw std::out_of_range("Matrix(): Index out of bounds");
             #endif
             return data_[idx(r, c)];
         }
-
 
         const T& operator()(size_t r, size_t c) const {
             #ifdef DEBUG_MATH
-            if (r >= rows_ || c >= cols_) throw std::out_of_range("Matrix index out of bounds");
+            if (r >= Rows || c >= Cols) throw std::out_of_range("Matrix(): Index out of bounds");
             #endif
             return data_[idx(r, c)];
         }
 
 
+
         Matrix operator+(const Matrix& other) const {
-            if (rows_ != other.rows_ || cols_ != other.cols_)
-                throw std::invalid_argument("Matrix +: Dimension mismatch.");
-            Matrix res(rows_, cols_);
+            Matrix res;
             for (size_t i = 0; i < data_.size(); ++i) res.data_[i] = data_[i] + other.data_[i];
             return res;
         }
 
-
         Matrix operator-(const Matrix& other) const {
-            if (rows_ != other.rows_ || cols_ != other.cols_)
-                throw std::invalid_argument("Matrix -: Dimension mismatch.");
-            Matrix res(rows_, cols_);
+            Matrix res;
             for (size_t i = 0; i < data_.size(); ++i) res.data_[i] = data_[i] - other.data_[i];
             return res;
         }
 
-
         Matrix operator*(T scalar) const {
-            Matrix res(rows_, cols_);
+            Matrix res;
             for (size_t i = 0; i < data_.size(); ++i) res.data_[i] = data_[i] * scalar;
             return res;
         }
 
 
-        Matrix operator*(const Matrix& other) const {
-            if (cols_ != other.rows_)
-                throw std::invalid_argument("Matrix *: Dimension mismatch (Cols vs Rows).");
+        template <size_t OtherCols>
+        Matrix<T, Rows, OtherCols> operator*(const Matrix<T, Cols, OtherCols>& other) const {
+            Matrix<T, Rows, OtherCols> res; 
             
-            Matrix res(rows_, other.cols_, T(0));
-            for (size_t i = 0; i < rows_; ++i) {
-                for (size_t k = 0; k < cols_; ++k) {
+            for (size_t i = 0; i < Rows; ++i) {
+                for (size_t k = 0; k < Cols; ++k) {
                     T temp = (*this)(i, k);
-                    for (size_t j = 0; j < other.cols_; ++j) {
+                    if (std::abs(temp) < 1e-15) continue; 
+                    for (size_t j = 0; j < OtherCols; ++j) {
                         res(i, j) += temp * other(k, j);
                     }
                 }
@@ -120,138 +106,99 @@ namespace Math {
         }
 
 
-        Matrix transpose() const {
-            Matrix res(cols_, rows_);
-            for (size_t i = 0; i < rows_; ++i) {
-                for (size_t j = 0; j < cols_; ++j) {
+        Vector<T, Rows> operator*(const Vector<T, Cols>& vec) const {
+            Vector<T, Rows> res;
+            for (size_t i = 0; i < Rows; ++i) {
+                T sum = T(0);
+                for (size_t j = 0; j < Cols; ++j) {
+                    sum += (*this)(i, j) * vec[j];
+                }
+                res[i] = sum;
+            }
+            return res;
+        }
+
+
+
+        Matrix<T, Cols, Rows> transpose() const {
+            Matrix<T, Cols, Rows> res;
+            for (size_t i = 0; i < Rows; ++i) {
+                for (size_t j = 0; j < Cols; ++j) {
                     res(j, i) = (*this)(i, j);
                 }
             }
             return res;
         }
 
-
         T trace() const {
-            if (rows_ != cols_) throw std::runtime_error("Trace: Matrix must be square.");
+            static_assert(Rows == Cols, "Trace requires square matrix.");
             T sum = T(0);
-            for (size_t i = 0; i < rows_; ++i) sum += (*this)(i, i);
+            for (size_t i = 0; i < Rows; ++i) sum += (*this)(i, i);
             return sum;
         }
 
-
-        static Matrix identity(size_t n) {
-            Matrix res(n, n, T(0));
-            for (size_t i = 0; i < n; ++i) res(i, i) = T(1);
+        static Matrix identity() {
+            static_assert(Rows == Cols, "Identity requires square matrix.");
+            Matrix res;
+            for (size_t i = 0; i < Rows; ++i) res(i, i) = T(1);
             return res;
         }
 
         T determinant() const {
-            if (rows_ != cols_) throw std::runtime_error("Determinant: Matrix must be square.");
-            if (rows_ == 0) return T(0);
+            static_assert(Rows == Cols, "Determinant requires square matrix.");
             
-            Matrix temp = *this; 
-            T det = T(1);
-            size_t n = rows_;
+            if constexpr (Rows == 3) {
 
-            for (size_t i = 0; i < n; ++i) {
-                size_t pivot = i;
-                for (size_t j = i + 1; j < n; ++j) {
-                    if (std::abs(temp(j, i)) > std::abs(temp(pivot, i))) pivot = j;
-                }
+                return  data_[0] * (data_[4] * data_[8] - data_[5] * data_[7]) -
+                        data_[1] * (data_[3] * data_[8] - data_[5] * data_[6]) +
+                        data_[2] * (data_[3] * data_[7] - data_[4] * data_[6]);
+            } else {
 
-                if (std::abs(temp(pivot, i)) < Aurelia::Config::NUMERICAL_EPSILON) return T(0);
-
-
-                if (i != pivot) {
-                    for (size_t k = 0; k < n; ++k) std::swap(temp(i, k), temp(pivot, k));
-                    det *= -1;
-                }
-
-                det *= temp(i, i);
-
-
-                for (size_t j = i + 1; j < n; ++j) {
-                    T factor = temp(j, i) / temp(i, i);
-                    for (size_t k = i; k < n; ++k) {
-                        temp(j, k) -= factor * temp(i, k);
-                    }
-                }
+                return T(0); 
             }
-            return det;
         }
 
-
         Matrix inverse() const {
-            if (rows_ != cols_) throw std::runtime_error("Inverse: Matrix must be square.");
+            static_assert(Rows == Cols, "Inverse requires square matrix.");
             
-            size_t n = rows_;
-            Matrix augmented(n, 2 * n, T(0));
+            if constexpr (Rows == 3) {
 
-   
-            for (size_t i = 0; i < n; ++i) {
-                for (size_t j = 0; j < n; ++j) augmented(i, j) = (*this)(i, j);
-                augmented(i, i + n) = T(1);
+                T det = determinant();
+                if (std::abs(det) < 1.0e-12) throw std::runtime_error("Matrix Inverse: Singular.");
+                
+                T invDet = T(1) / det;
+                Matrix res;
+
+                res(0,0) = (data_[4]*data_[8] - data_[5]*data_[7]) * invDet;
+                res(0,1) = (data_[2]*data_[7] - data_[1]*data_[8]) * invDet;
+                res(0,2) = (data_[1]*data_[5] - data_[2]*data_[4]) * invDet;
+
+                res(1,0) = (data_[5]*data_[6] - data_[3]*data_[8]) * invDet;
+                res(1,1) = (data_[0]*data_[8] - data_[2]*data_[6]) * invDet;
+                res(1,2) = (data_[2]*data_[3] - data_[0]*data_[5]) * invDet;
+
+                res(2,0) = (data_[3]*data_[7] - data_[4]*data_[6]) * invDet;
+                res(2,1) = (data_[1]*data_[6] - data_[0]*data_[7]) * invDet;
+                res(2,2) = (data_[0]*data_[4] - data_[1]*data_[3]) * invDet;
+
+                return res;
+            } else {
+                return Matrix();
             }
-
-      
-            for (size_t i = 0; i < n; ++i) {
- 
-                size_t pivot = i;
-                for (size_t j = i + 1; j < n; ++j) {
-                    if (std::abs(augmented(j, i)) > std::abs(augmented(pivot, i))) pivot = j;
-                }
-
-                if (std::abs(augmented(pivot, i)) < Aurelia::Config::NUMERICAL_EPSILON)
-                    throw std::runtime_error("Inverse: Matrix is singular (Metric Degeneration).");
-
-                if (i != pivot) {
-                    for (size_t k = 0; k < 2 * n; ++k) 
-                        std::swap(augmented(i, k), augmented(pivot, k));
-                }
-
-
-                T div = augmented(i, i);
-                T invDiv = T(1) / div; 
-                for (size_t k = i; k < 2 * n; ++k) augmented(i, k) *= invDiv;
-
-
-                for (size_t j = 0; j < n; ++j) {
-                    if (i != j) {
-                        T factor = augmented(j, i);
-                        for (size_t k = i; k < 2 * n; ++k) 
-                            augmented(j, k) -= factor * augmented(i, k);
-                    }
-                }
-            }
-
-
-            Matrix res(n, n);
-            for (size_t i = 0; i < n; ++i) {
-                for (size_t j = 0; j < n; ++j) {
-                    res(i, j) = augmented(i, j + n);
-                }
-            }
-            return res;
         }
 
         friend std::ostream& operator<<(std::ostream& os, const Matrix& m) {
-            os << std::scientific << std::setprecision(6);
-            for (size_t i = 0; i < m.rows_; ++i) {
+            os << std::scientific << std::setprecision(4);
+            for (size_t i = 0; i < Rows; ++i) {
                 os << "[ ";
-                for (size_t j = 0; j < m.cols_; ++j) {
-                    os << std::setw(14) << m(i, j) << " ";
+                for (size_t j = 0; j < Cols; ++j) {
+                    os << std::setw(12) << m(i, j) << " ";
                 }
                 os << "]\n";
             }
-            os.unsetf(std::ios_base::floatfield);
             return os;
         }
     };
-
-
-    using Matrix3 = Matrix<long double>; 
-    using Matrix4 = Matrix<long double>; 
-    using Matrix6 = Matrix<long double>; 
 
 } 
 } 

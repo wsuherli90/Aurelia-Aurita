@@ -1,5 +1,3 @@
-
-
 #ifndef AURELIA_STATMECH_ENTROPY_MAP_H
 #define AURELIA_STATMECH_ENTROPY_MAP_H
 
@@ -95,4 +93,4 @@ namespace Polymer {
 } 
 }
 
-#endif 
+#endif

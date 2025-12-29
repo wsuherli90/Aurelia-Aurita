@@ -16,8 +16,8 @@ namespace ActiveMatter {
 namespace Morphogenesis {
 
     using Real = long double;
-    using Vector3 = Aurelia::Math::Vector<Real>;
-    using Matrix3 = Aurelia::Math::Matrix<Real>;
+    using Vector3 = Aurelia::Math::Vector<Real, 3>;
+    using Matrix3 = Aurelia::Math::Matrix<Real, 3, 3>;
     using PointTM = Aurelia::Geometry::Manifold::PointTM;
     using ChernConn = Aurelia::Geometry::Connection::ChernConnection;
     using ChemPot = Aurelia::ActiveMatter::Thermodynamics::ChemicalPotential;
@@ -118,8 +118,8 @@ namespace Morphogenesis {
                     Real term1 = 0.0L; 
                     Real term2 = 0.0L; 
                     for(size_t k=0; k<3; ++k) {
-                        term1 += g(b, k) * D_v(k, a); // D_a v_b
-                        term2 += g(a, k) * D_v(k, b); // D_b v_a
+                        term1 += g(b, k) * D_v(k, a); 
+                        term2 += g(a, k) * D_v(k, b); 
                     }
                     Lie(a, b) = term1 + term2;
                 }
@@ -134,7 +134,9 @@ namespace Morphogenesis {
                        const ChemPot& chem_pot,
                        const Vector3& 
                        const Matrix3& D_flow_velocity) { 
+           
 
+            // Ensure pointed and optimize 
             Matrix3 g_old = g_engine.covariant();
             Matrix3 g_inv = g_engine.contravariant();
             Matrix3 R_ij = computeRicciTensor(u, conn, g_engine);
@@ -160,4 +162,4 @@ namespace Morphogenesis {
 } 
 } 
 
-#endif 
+#endif
