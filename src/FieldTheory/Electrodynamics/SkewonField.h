@@ -1,9 +1,9 @@
 #ifndef AURELIA_FIELDTHEORY_ELECTRODYNAMICS_SKEWON_FIELD_H
 #define AURELIA_FIELDTHEORY_ELECTRODYNAMICS_SKEWON_FIELD_H
 
-#include "../../../Foundation/LinearAlgebra/Matrix.h"
-#include "../../../Foundation/LinearAlgebra/Tensor4.h"
-#include "../../../Geometry/Manifold/SlitTangentBundle.h"
+#include "../../Foundation/LinearAlgebra/Matrix.h"
+#include "../../Foundation/LinearAlgebra/Tensor4.h"
+#include "../../Geometry/Manifold/SlitTangentBundle.h"
 #include "../../../config/BiophysicalConstants.h"
 
 namespace Aurelia {

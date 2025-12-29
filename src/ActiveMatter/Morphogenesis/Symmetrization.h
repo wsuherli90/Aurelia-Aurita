@@ -10,7 +10,7 @@
 #include "../../Geometry/Manifold/SlitTangentBundle.h"
 #include "../../Foundation/LinearAlgebra/Vector.h"
 #include "../../Foundation/Calculus/NumericalDiff.h" 
-#include "../../config/BiophyiscalConstants.h"
+#include "../../../config/BiophysicalConstants.h"
 
 namespace Aurelia {
 namespace ActiveMatter {

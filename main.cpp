@@ -3,7 +3,7 @@
 #include <iomanip>
 
 
-#include "config/BiophyiscalConstants.h" 
+#include "config/BiophysicalConstants.h" 
 #include "src/Foundation/LinearAlgebra/Vector.h"
 #include "src/Foundation/LinearAlgebra/Matrix.h"
 

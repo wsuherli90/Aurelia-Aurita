@@ -1,10 +1,10 @@
 #ifndef AURELIA_FIELDTHEORY_ELECTRODYNAMICS_CONSTITUTIVE_MAP_H
 #define AURELIA_FIELDTHEORY_ELECTRODYNAMICS_CONSTITUTIVE_MAP_H
 #include <complex>
-#include "../../../Foundation/LinearAlgebra/Matrix.h"
-#include "../../../Foundation/LinearAlgebra/Tensor4.h"
-#include "../../../Foundation/LinearAlgebra/Vector.h"
-#include "../../../Foundation/LinearAlgebra/ComplexMath.h"
+#include "../../Foundation/LinearAlgebra/Matrix.h"
+#include "../../Foundation/LinearAlgebra/Tensor4.h"
+#include "../../Foundation/LinearAlgebra/Vector.h"
+#include "../../Foundation/LinearAlgebra/ComplexMath.h"
 #include "../../../config/BiophysicalConstants.h"
 #include "SkewonField.h"
 

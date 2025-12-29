@@ -2,8 +2,8 @@
 #define AURELIA_INVERSION_RIEMANNIAN_ADJOINT_STATE_H
 
 #include <functional>
-#include "../../../Foundation/LinearAlgebra/Vector.h"
-#include "../../../FieldTheory/Lagrangian/ActionFunctional.h"
+#include "../../Foundation/LinearAlgebra/Vector.h"
+#include "../../FieldTheory/Lagrangian/ActionFunctional.h"
 
 namespace Aurelia {
 namespace Inversion {

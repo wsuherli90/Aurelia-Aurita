@@ -7,7 +7,7 @@
 #include <iostream>
 
 #include "../../Foundation/LinearAlgebra/Vector.h"
-#include "../../config/BiophysicalConstants.h"
+#include "../../../config/BiophysicalConstants.h"
 
 namespace Aurelia {
 namespace Geometry {

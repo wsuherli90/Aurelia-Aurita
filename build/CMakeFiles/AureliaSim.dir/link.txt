@@ -1,0 +1,1 @@
+/usr/bin/c++ -O3 -DNDEBUG -Wl,--dependency-file=CMakeFiles/AureliaSim.dir/link.d CMakeFiles/AureliaSim.dir/main.cpp.o -o AureliaSim

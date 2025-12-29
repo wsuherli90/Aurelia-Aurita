@@ -1,10 +1,10 @@
 #ifndef AURELIA_INVERSION_RIEMANNIAN_PARALLEL_TRANS_H
 #define AURELIA_INVERSION_RIEMANNIAN_PARALLEL_TRANS_H
 
-#include "../../../Foundation/LinearAlgebra/Vector.h"
-#include "../../../Geometry/Manifold/SlitTangentBundle.h"
-#include "../../../Geometry/Manifold/MetricTensor.h" 
-#include "../../../Geometry/Connection/ChernConnection.h"
+#include "../../Foundation/LinearAlgebra/Vector.h"
+#include "../../Geometry/Manifold/SlitTangentBundle.h"
+#include "../../Geometry/Manifold/MetricTensor.h" 
+#include "../../Geometry/Connection/ChernConnection.h"
 
 namespace Aurelia {
 namespace Inversion {

@@ -132,7 +132,7 @@ namespace Morphogenesis {
                        Aurelia::Geometry::Manifold::MetricTensor& g_engine,
                        ChernConn& conn,
                        const ChemPot& chem_pot,
-                       const Vector3& 
+                       const Vector3& flow_velocity,
                        const Matrix3& D_flow_velocity) { 
 
             Matrix3 g_old = g_engine.covariant();

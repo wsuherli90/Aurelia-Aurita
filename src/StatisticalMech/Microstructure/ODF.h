@@ -8,7 +8,7 @@
 #include <stdexcept>
 #include <algorithm> 
 
-#include "../../../Foundation/LinearAlgebra/Vector.h"
+#include "../../Foundation/LinearAlgebra/Vector.h"
 #include "../../../config/BiophysicalConstants.h"
 
 namespace Aurelia {

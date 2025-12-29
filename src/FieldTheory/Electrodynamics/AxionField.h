@@ -4,10 +4,10 @@
 #include <cmath>
 #include <functional>
 
-#include "../../../Foundation/LinearAlgebra/ComplexMath.h"
-#include "../../../Foundation/LinearAlgebra/Vector.h"
-#include "../../../Foundation/Calculus/NumericalDiff.h" 
-#include "../../../Geometry/Manifold/SlitTangentBundle.h"
+#include "../../Foundation/LinearAlgebra/ComplexMath.h"
+#include "../../Foundation/LinearAlgebra/Vector.h"
+#include "../../Foundation/Calculus/NumericalDiff.h" 
+#include "../../Geometry/Manifold/SlitTangentBundle.h"
 #include "../../../config/BiophysicalConstants.h"
 
 namespace Aurelia {
@@ -68,6 +68,6 @@ namespace Electrodynamics {
 
 } 
 } 
-} /
+}
 
 #endif 

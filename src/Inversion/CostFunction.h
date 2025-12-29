@@ -6,11 +6,11 @@
 #include <functional>
 #include <stdexcept>
 
-#include "../../../Foundation/LinearAlgebra/Vector.h"
-#include "../../../Foundation/LinearAlgebra/Matrix.h"
-#include "../../../Geometry/Manifold/MetricTensor.h"
-#include "../../../ActiveMatter/Thermodynamics/ChemicalPotential.h"
-#include "../../../config/BiophyiscalConstants.h"
+#include "../Foundation/LinearAlgebra/Vector.h"
+#include "../Foundation/LinearAlgebra/Matrix.h"
+#include "../Geometry/Manifold/MetricTensor.h"
+#include "../ActiveMatter/Thermodynamics/ChemicalPotential.h"
+#include "../config/BiophysicalConstants.h"
 
 namespace Aurelia {
 namespace Inversion {

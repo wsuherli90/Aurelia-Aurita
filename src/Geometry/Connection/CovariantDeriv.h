@@ -8,7 +8,7 @@
 #include "ChernConnection.h"
 #include "../../Foundation/LinearAlgebra/Vector.h"
 #include "../../Foundation/LinearAlgebra/Matrix.h"
-#include "../../config/BiophysicalConstants.h"
+#include "../../../config/BiophysicalConstants.h"
 
 namespace Aurelia {
 namespace Geometry {

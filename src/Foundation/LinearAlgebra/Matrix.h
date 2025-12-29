@@ -17,8 +17,7 @@ namespace Math {
 
     template <typename T>
     class Matrix {
-        static_assert(std::is_floating_point<T>::value, 
-            "Matrix<T> can only be instantiated with floating point types (float, double, long double).");
+        // Removed static_assert to allow Complex<T> types for electrodynamics
 
     private:
         size_t rows_;

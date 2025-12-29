@@ -11,7 +11,7 @@
 #include "SlitTangentBundle.h"
 #include "../../Foundation/LinearAlgebra/Matrix.h"
 #include "../../Foundation/Calculus/NumericalDiff.h"
-#include "../../config/BiophysicalConstants.h"
+#include "../../../config/BiophysicalConstants.h"
 
 namespace Aurelia {
 namespace Geometry {

@@ -6,8 +6,8 @@
 #include <algorithm>
 
 #include "../../../config/BiophysicalConstants.h"
-#include "../../../Geometry/Manifold/MetricTensor.h"
-#include "../../../Foundation/LinearAlgebra/Matrix.h"
+#include "../../Geometry/Manifold/MetricTensor.h"
+#include "../../Foundation/LinearAlgebra/Matrix.h"
 
 namespace Aurelia {
 namespace ActiveMatter {

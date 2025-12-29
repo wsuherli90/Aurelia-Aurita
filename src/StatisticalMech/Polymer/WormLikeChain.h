@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <algorithm> 
 
-#include "../../../config/BiophyiscalConstants.h"
+#include "../../../config/BiophysicalConstants.h"
 
 namespace Aurelia {
 namespace StatMech {

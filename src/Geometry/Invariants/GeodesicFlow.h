@@ -4,7 +4,7 @@
 #include <vector>
 #include "../Manifold/SlitTangentBundle.h"
 #include "../Connection/ChernConnection.h"
-#include "../../config/BiophyiscalConstants.h"
+#include "../../../config/BiophysicalConstants.h"
 
 namespace Aurelia {
 namespace Geometry {
@@ -131,7 +131,7 @@ namespace Invariants {
         }
     };
 
-} /
+}
 } 
 } 
 

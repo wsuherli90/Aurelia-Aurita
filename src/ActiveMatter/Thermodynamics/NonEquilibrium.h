@@ -5,7 +5,7 @@
 #include <iostream>
 #include <stdexcept>
 
-#include "../../../Foundation/LinearAlgebra/Matrix.h"
+#include "../../Foundation/LinearAlgebra/Matrix.h"
 #include "../../../config/BiophysicalConstants.h"
 
 namespace Aurelia {
