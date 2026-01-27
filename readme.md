@@ -1,26 +1,54 @@
-# Aurelia: Finslerian Active Matter Simulation
+# Aurelia Aurita
 
-![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
-![License](https://img.shields.io/badge/license-MIT-blue)
-![C++](https://img.shields.io/badge/std-c%2B%2B17-orange)
+![Status](https://img.shields.io/badge/Status-Research_Prototype-blue)
+![Lang](https://img.shields.io/badge/Languages-C%2B%2B17%20%7C%20VHDL-orange)
 
-An HPC-optimized C++ simulation engine modeling the mesoglea of *Aurelia aurita* as a **Finslerian Manifold** driven by non-equilibrium thermodynamic flows.
+So this is the codebase for my research on Finslerian Field Theory and that Quantum Optimization stuff from the STOC '25 paper. Basically looking at *Aurelia aurita* (jellyfish) mesoglea mechanics but using some heavy math to simulate it.
 
-## 🚀 Key Features
-* **Zero-Dependency**: Written in pure C++17 with no external libraries.
-* **HPC Optimized**: Uses Stack Allocation (`std::array`) and Template Metaprogramming for cache-friendly performance.
-* **Geometric Rigor**: Implements Chern Connection and Cartan Torsion explicitly.
-* **Paraview Export**: Native VTK output for tensor field visualization.
+I've got a dual setup here: C++ for the core logic and VHDL because I needed to offload the heavy tensor math to FPGA to get it running fast enough.
 
-## 🛠️ Build Instructions
+## What's actually in here
 
-### Prerequisites
-* C++17 Compliant Compiler (GCC, Clang, or MSVC)
-* CMake 3.15+
+### 1. Quantum Stuff (STOC 2025)
+Implemented the Unitary-Invariant Spectral Sparsification.
+- **Static Envelope Sampling**: Solves the drift issue without constant updates.
+- **Cubic-Regularized Newton**: Uses Lanczos iteration. Needed this for the barren plateaus problem.
+- **Reverse Causality**: Tracks light-cones backwards.
 
-### Building (Linux/macOS)
+### 2. Physics & Geometry
+This is the Finsler geometry engine.
+- **Non-Riemannian**: Computes Cartan Torsion, Chern Connection, etc. Uses the Worm-Like Chain model.
+- **Field Theory**: Axion/Skewon fields from collagen structures.
+- **Morphogenesis**: The actual Ricci Flow simulation for tissue regenerations.
+
+### 3. Hardware (VHDL)
+The FPGA bits.
+- `RicciFlow_Streaming_Eng.vhd`: The streaming engine.
+- `Chemistry`: Custom high-precision units for potentials (4th order Taylor).
+- `Math`: Pipelined matrix inversion and 4th-order stencils for derivatives.
+
+## Structure
+
+- `src/` - The C++ stuff. Active matter logic, field theory, geometry foundation (tensors, matrices), and the theoretical solvers.
+- `vhdl/` - The hardware descriptions.
+- `config/` - Constants.
+
+## How to run
+
+You'll need GCC 9+ or Clang and OpenMP.
+
 ```bash
-mkdir build && cd build
-cmake -DCMAKE_BUILD_TYPE=Release ..
-make -j$(nproc)
-./AureliaSim
+g++ -std=c++17 -O3 -fopenmp -I./src main.cpp -o aurelia_sim
+./aurelia_sim
+```
+
+For VHDL, I use GHDL (2008 standard).
+
+```bash
+ghdl -a --std=08 vhdl/Aurelia_Types_pkg.vhd vhdl/Laplacian_Order4_Unit.vhd
+ghdl -e --std=08 Stencil_Buffer_5Point
+```
+
+## Credits
+
+**William Lee**

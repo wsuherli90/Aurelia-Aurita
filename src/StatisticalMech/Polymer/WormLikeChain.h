@@ -1,13 +1,10 @@
-
-
-#ifndef AURELIA_STATMECH_WORMLIKECHAIN_H
-#define AURELIA_STATMECH_WORMLIKECHAIN_H
+#ifndef AURELIA_STATMECH_WLC_H
+#define AURELIA_STATMECH_WLC_H
 
 #include <cmath>
+#include <algorithm>
 #include <stdexcept>
-#include <algorithm> 
-
-#include "../../../config/BiophyiscalConstants.h"
+#include "../../../config/BiophysicalConstants.h"
 
 namespace Aurelia {
 namespace StatMech {
@@ -17,70 +14,47 @@ namespace Polymer {
 
     class WormLikeChain {
     private:
-        Real Lp_; 
-        Real Lc_; 
-        Real T_; 
-        Real kBT_; 
+        Real persistence_length_;
+        Real contour_length_;
+        Real temperature_;
+        Real kbT_;
 
     public:
-     
-        WormLikeChain(Real Lp = Aurelia::Config::COLLAGEN_PERSISTENCE_LENGTH,
-                      Real Lc = Aurelia::Config::COLLAGEN_CONTOUR_LENGTH,
-                      Real T  = Aurelia::Config::TEMPERATURE_K)
-            : Lp_(Lp), Lc_(Lc), T_(T) {
-            
-            kBT_ = Aurelia::Config::BOLTZMANN_CONSTANT * T_;
+        
+        WormLikeChain() {
+            persistence_length_ = Aurelia::Config::COLLAGEN_PERSISTENCE_LENGTH;
+            contour_length_     = Aurelia::Config::COLLAGEN_CONTOUR_LENGTH;
+            temperature_        = Aurelia::Config::PHYSIOLOGICAL_TEMP;
+            kbT_                = Aurelia::Config::BOLTZMANN_CONST * temperature_;
         }
 
-    
-        Real computeForce(Real z) const noexcept {
-
-            if (z >= Lc_ * Aurelia::Config::WLC_SINGULARITY_CUTOFF) 
-                return Aurelia::Config::WLC_FORCE_PENALTY; 
+        #pragma omp declare simd uniform(this) linear(extension)
+        Real computeFreeEnergy(Real extension) const {
             
-            if (z <= 0.0L) return 0.0L; // Slack chain
+            Real x = std::abs(extension);
+            
+            Real L = contour_length_;
+            if (x >= L * 0.99L) x = L * 0.99L; 
 
-            Real ratio = z / Lc_;
-            Real term1 = 1.0L / (4.0L * (1.0L - ratio) * (1.0L - ratio));
-            Real term2 = -0.25L;
-            Real term3 = ratio;
+            Real ratio = x / L;
+            Real term1 = 1.0L - ratio;
+            Real term1_sq = term1 * term1;
 
-            return (kBT_ / Lp_) * (term1 + term2 + term3);
+            Real factor = kbT_ * contour_length_ / (4.0L * persistence_length_);
+            
+            Real partA = 1.0L / term1_sq;
+            
+            
+            Real energy = (kbT_ / persistence_length_) * (0.25L * partA - 0.25L + ratio);
+
+            return energy;
         }
 
-        Real computeFreeEnergy(Real z) const noexcept {
-
-            if (z >= Lc_ * Aurelia::Config::WLC_SINGULARITY_CUTOFF) 
-                return Aurelia::Config::WLC_ENERGY_BARRIER; 
-            
-            if (z <= 0.0L) return 0.0L;
-
-            Real ratio = z / Lc_; 
-            
-  
-            Real term1 = 1.0L / (4.0L * (1.0L - ratio));
-            
-
-            Real term2 = -ratio / 4.0L;
-            
-
-            Real term3 = (ratio * ratio) / 2.0L;
-
-            Real constant = -0.25L;
-
-            Real prefactor = (kBT_ * Lc_) / Lp_;
-
-            return prefactor * (term1 + term2 + term3 + constant);
-        }
-
-        // Getters for properties
-        Real stiffness() const { return kBT_ / Lp_; }
-        Real limit() const { return Lc_; }
-        Real thermalEnergy() const { return kBT_; }
+        void setPersistenceLength(Real Lp) { persistence_length_ = Lp; }
     };
 
 } 
 } 
-} 
+}
 
-#endif 
+#endif

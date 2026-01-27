@@ -63,7 +63,6 @@ namespace Calculus {
             point[dim_index] = original_val - 2.0 * H;
             Real f_m2 = func(point);
 
-            // Restore
             point[dim_index] = original_val;
 
             return (-f_p2 + 16.0*f_p1 - 30.0*f_0 + 16.0*f_m1 - f_m2) / (12.0 * H * H);

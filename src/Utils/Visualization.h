@@ -8,6 +8,7 @@
 #include <limits>
 
 #include "../Geometry/Manifold/MetricTensor.h"
+#include "../ActiveMatter/Morphogenesis/RicciFlow.h"
 #include "../FieldTheory/Electrodynamics/AxionField.h"
 
 namespace Aurelia {
@@ -36,8 +37,9 @@ namespace Utils {
               x0_(x0), y0_(y0), z0_(z0) {}
 
      
-        void exportState(const std::vector<MetricEngine>& metric_field,
+        void exportState(const Aurelia::ActiveMatter::Morphogenesis::MetricFieldSoA& metric_field,
                          const std::vector<Real>& axion_field,
+                         const std::vector<Real>& cartan_torsion_field,
                          const std::vector<Aurelia::Math::Vector<Real>>& director_field) {
             
             std::ofstream vtk(filename_);
@@ -63,6 +65,12 @@ namespace Utils {
                 vtk << (double)val << "\n"; 
             }
 
+            vtk << "SCALARS Cartan_Torsion_Norm double 1\n";
+            vtk << "LOOKUP_TABLE heat\n";
+            for (const auto& val : cartan_torsion_field) {
+                vtk << (double)val << "\n"; 
+            }
+
             vtk << "VECTORS Collagen_Director double\n";
             for (const auto& vec : director_field) {
                 vtk << (double)vec[0] << " " << (double)vec[1] << " " << (double)vec[2] << "\n";
@@ -70,9 +78,9 @@ namespace Utils {
 
 
             vtk << "TENSORS Finsler_Metric double\n";
-            for (const auto& engine : metric_field) {
+            for (size_t i = 0; i < metric_field.total_size; ++i) {
 
-                auto g = engine.covariant(); 
+                auto g = metric_field.get(i); 
                 
                 vtk << (double)g(0,0) << " " << (double)g(0,1) << " " << (double)g(0,2) << " "
                     << (double)g(1,0) << " " << (double)g(1,1) << " " << (double)g(1,2) << " "

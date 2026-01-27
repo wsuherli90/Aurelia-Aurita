@@ -2,14 +2,14 @@
 #define AURELIA_GEOMETRY_CHERN_CONNECTION_H
 
 #include <vector>
-#include <functional>
 #include <cmath>
+#include <array>
 
 #include "../Manifold/MetricTensor.h"
-#include "../Manifold/SlitTangentBundle.h"
-#include "../../Foundation/Calculus/NumericalDiff.h"
 #include "../../Foundation/LinearAlgebra/Matrix.h"
 #include "../../Foundation/LinearAlgebra/Vector.h"
+#include "../../Foundation/LinearAlgebra/Tensor4.h"
+#include "../../Foundation/Calculus/StencilCache.h"
 
 namespace Aurelia {
 namespace Geometry {
@@ -19,158 +19,142 @@ namespace Connection {
     using Vector3 = Aurelia::Math::Vector<Real, 3>;
     using Matrix3 = Aurelia::Math::Matrix<Real, 3, 3>;
     using Tensor3 = std::vector<Matrix3>; 
-    using Diff = Aurelia::Math::Calculus::NumericalDiff;
+    using Stencil = Aurelia::Math::Calculus::MetricStencilCache;
+
 
     class ChernConnection {
     private:
-        Tensor3 gamma_; 
-        Matrix3 non_linear_N_;
-        Vector3 spray_G_;
-
+        Tensor3 gamma_;         
+        Matrix3 non_linear_N_;  
         bool computed_;
-        Tensor3 computeOsculatingGamma(Aurelia::Geometry::Manifold::MetricTensor& g_engine, 
-                                       Aurelia::Geometry::Manifold::PointTM& u) {
-            
-            const Real h = 1.0e-4L;
-            const Real inv_2h = 1.0L / (2.0L * h);
 
-            g_engine.compute(u);
-            Matrix3 g_inv = g_engine.contravariant();
-            Vector3 x_orig = u.x();
-
-
-            Tensor3 dg_dx(3, Matrix3(3, 3)); 
-
-            for (size_t k = 0; k < 3; ++k) {
-
-                Vector3 x_p = x_orig; x_p[k] += h; u.set_x(x_p);
-                g_engine.compute(u); Matrix3 g_p = g_engine.covariant();
-
-                Vector3 x_m = x_orig; x_m[k] -= h; u.set_x(x_m);
-                g_engine.compute(u); Matrix3 g_m = g_engine.covariant();
-
-                dg_dx[k] = (g_p - g_m) * inv_2h;
-            }
-            u.set_x(x_orig); 
-            g_engine.compute(u); 
+        Tensor3 computeOsculatingGamma(const Stencil& stencil, const Matrix3& g_inv) {
             Tensor3 osc_gamma(3, Matrix3(3, 3));
-            for(size_t i=0; i<3; ++i) {
-                for(size_t j=0; j<3; ++j) {
-                    for(size_t k=0; k<3; ++k) {
+            
+            for(size_t k=0; k<3; ++k) {
+                for(size_t i=0; i<3; ++i) {
+                    for(size_t j=0; j<3; ++j) {
+    
                         Real sum = 0.0L;
                         for(size_t m=0; m<3; ++m) {
-                            sum += g_inv(i, m) * (dg_dx[k](m, j) + dg_dx[j](m, k) - dg_dx[m](j, k));
+                            Real d_j_gim = stencil.partialDerivative(i, m, j);
+                            Real d_i_gjm = stencil.partialDerivative(j, m, i);
+                            Real d_m_gij = stencil.partialDerivative(i, j, m);
+                            
+                            sum += g_inv(k, m) * (d_j_gim + d_i_gjm - d_m_gij);
                         }
-                        osc_gamma[i](j, k) = 0.5L * sum;
+                        osc_gamma[k](i, j) = 0.5L * sum;
                     }
                 }
             }
             return osc_gamma;
         }
 
-    public:
-        ChernConnection() : gamma_(3, Matrix3(3, 3)), computed_(false) {}
-        void compute(Aurelia::Geometry::Manifold::MetricTensor& g_engine, 
-                     Aurelia::Geometry::Manifold::PointTM& u) {
-            
-            const Real h = 1.0e-4L;
-            const Real inv_2h = 1.0L / (2.0L * h);
-            Vector3 y_orig = u.y();
-            Tensor3 center_gamma = computeOsculatingGamma(g_engine, u);
-            
-            spray_G_ = Vector3(3, 0.0L);
+
+        Vector3 computeSpray(const Tensor3& osc_gamma, const Vector3& y) {
+            Vector3 G(0.0L);
             for(size_t i=0; i<3; ++i) {
                 for(size_t j=0; j<3; ++j) {
                     for(size_t k=0; k<3; ++k) {
-                        spray_G_[i] += 0.5L * center_gamma[i](j, k) * y_orig[j] * y_orig[k];
+                        G[i] += 0.5L * osc_gamma[i](j, k) * y[j] * y[k];
                     }
                 }
             }
-            auto getSprayVector = [&](Vector3 y_probe) -> Vector3 {
+            return G;
+        }
 
-                Aurelia::Geometry::Manifold::PointTM temp_u = u;
-                temp_u.set_y(y_probe); 
+    public:
+        ChernConnection() : gamma_(3, Matrix3(3, 3)), computed_(false) {}
 
-                Tensor3 temp_gamma = computeOsculatingGamma(g_engine, temp_u);
-                
-                Vector3 G(3, 0.0L);
-                for(size_t i=0; i<3; ++i) {
-                    for(size_t j=0; j<3; ++j) {
-                        for(size_t k=0; k<3; ++k) {
-                            G[i] += 0.5L * temp_gamma[i](j, k) * y_probe[j] * y_probe[k];
-                        }
-                    }
-                }
-                return G;
+        template <typename MetricEngine>
+        void compute(MetricEngine& g_engine, Aurelia::Geometry::Manifold::PointTM& u) {
+            
+            Real h = Aurelia::Config::FINITE_DIFFERENCE_STEP;
+            Vector3 y_orig = u.y();
+            
+            Stencil center_stencil;
+            center_stencil.populate(g_engine, u, Stencil::SPATIAL_X);
+            Matrix3 g_center = center_stencil.getCenter();
+            Matrix3 g_inv = g_center.inverse();
+            
+            non_linear_N_ = Matrix3(0.0L);
+
+            const Real inv_12h = 1.0L / (12.0L * h);
+
+            Tensor3 dg_dy(3, Matrix3(3,3)); 
+
+            auto computePerturbed = [&](const Vector3& y_p) -> std::pair<Vector3, Matrix3> {
+                PointTM u_p = u; u_p.set_y(y_p);
+                Stencil stencil_p;
+                stencil_p.populate(g_engine, u_p, Stencil::SPATIAL_X);
+                Matrix3 g_p = stencil_p.getCenter();
+                Matrix3 g_inv_p = g_p.inverse();
+                Tensor3 gamma_p = computeOsculatingGamma(stencil_p, g_inv_p);
+                Vector3 G_p = computeSpray(gamma_p, y_p);
+                return {G_p, g_p};
             };
 
-            non_linear_N_ = Matrix3(3, 3, 0.0L);
             for(size_t j=0; j<3; ++j) { 
-                Vector3 y_p = y_orig; y_p[j] += h;
-                Vector3 G_p = getSprayVector(y_p);
+                
+                Vector3 y_p2 = y_orig; y_p2[j] += 2.0L*h;
+                auto [G_p2, g_p2] = computePerturbed(y_p2);
 
-                Vector3 y_m = y_orig; y_m[j] -= h;
-                Vector3 G_m = getSprayVector(y_m);
+                Vector3 y_p1 = y_orig; y_p1[j] += h;
+                auto [G_p1, g_p1] = computePerturbed(y_p1);
 
-                Vector3 dG_dyj = (G_p - G_m) * inv_2h;
+                Vector3 y_m1 = y_orig; y_m1[j] -= h;
+                auto [G_m1, g_m1] = computePerturbed(y_m1);
 
+                Vector3 y_m2 = y_orig; y_m2[j] -= 2.0L*h;
+                auto [G_m2, g_m2] = computePerturbed(y_m2);
+
+                Vector3 dG_dy = (-G_p2 + G_p1 * 8.0L - G_m1 * 8.0L + G_m2) * inv_12h;
+                
                 for(size_t i=0; i<3; ++i) {
-                    non_linear_N_(i, j) = dG_dyj[i];
+                    non_linear_N_(i, j) = dG_dy[i];
+                }
+
+                for(size_t r=0; r<3; ++r) {
+                    for(size_t c=0; c<3; ++c) {
+                        Real val = (-g_p2(r,c) + 8.0L*g_p1(r,c) - 8.0L*g_m1(r,c) + g_m2(r,c)) * inv_12h;
+                        dg_dy[j](r, c) = val;
+                    }
                 }
             }
             
+            u.set_y(y_orig);
 
-            g_engine.compute(u);
-            Tensor3 dg_dy(3, Matrix3(3, 3));
-            for(size_t m=0; m<3; ++m) {
-                Vector3 y_p = y_orig; y_p[m] += h; u.set_y(y_p);
-                g_engine.compute(u); Matrix3 g_p = g_engine.covariant();
+            Tensor3 delta_g_dx(3, Matrix3(3,3)); 
 
-                Vector3 y_m = y_orig; y_m[m] -= h; u.set_y(y_m);
-                g_engine.compute(u); Matrix3 g_m = g_engine.covariant();
+            for(size_t k=0; k<3; ++k) { 
+                for(size_t i=0; i<3; ++i) {
+                    for(size_t j=0; j<3; ++j) {
+                        
+                        Real partial_x = center_stencil.partialDerivative(i, j, k);
+                        
+                        Real correction = 0.0L;
+                        for(size_t m=0; m<3; ++m) {
+                            Real partial_y = dg_dy[m](i, j);
+                            correction += non_linear_N_(m, k) * partial_y;
+                        }
 
-                dg_dy[m] = (g_p - g_m) * inv_2h;
+                        delta_g_dx[k](i, j) = partial_x - correction;
+                    }
+                }
             }
-            u.set_y(y_orig); 
-            g_engine.compute(u); 
 
-            Matrix3 g_inv = g_engine.contravariant();
-            Vector3 x_orig = u.x();
-            Tensor3 dg_dx(3, Matrix3(3, 3)); 
-            for (size_t k = 0; k < 3; ++k) {
-                Vector3 x_p = x_orig; x_p[k] += h; u.set_x(x_p);
-                g_engine.compute(u); Matrix3 g_p = g_engine.covariant();
-                Vector3 x_m = x_orig; x_m[k] -= h; u.set_x(x_m);
-                g_engine.compute(u); Matrix3 g_m = g_engine.covariant();
-                dg_dx[k] = (g_p - g_m) * inv_2h;
-            }
-            u.set_x(x_orig);
-            g_engine.compute(u);
-
-
-            Tensor3 delta_g(3, Matrix3(3, 3));
             for(size_t k=0; k<3; ++k) {
                 for(size_t i=0; i<3; ++i) {
                     for(size_t j=0; j<3; ++j) {
-                        Real d_dx = dg_dx[k](i, j);
-                        Real N_correction = 0.0L;
-                        for(size_t m=0; m<3; ++m) {
-                            N_correction += non_linear_N_(m, k) * dg_dy[m](i, j);
-                        }
-                        delta_g[k](i, j) = d_dx - N_correction;
-                    }
-                }
-            }
-
-
-            for(size_t i=0; i<3; ++i) {
-                for(size_t j=0; j<3; ++j) {
-                    for(size_t k=0; k<3; ++k) {
                         Real sum = 0.0L;
                         for(size_t m=0; m<3; ++m) {
-                            sum += g_inv(i, m) * (delta_g[k](m, j) + delta_g[j](m, k) - delta_g[m](j, k));
+                            Real term1 = delta_g_dx[i](j, m);
+                            Real term2 = delta_g_dx[j](i, m);
+                            Real term3 = delta_g_dx[m](i, j);
+                            
+                            sum += g_inv(k, m) * (term1 + term2 - term3);
                         }
-                        gamma_[i](j, k) = 0.5L * sum;
+                        gamma_[k](i, j) = 0.5L * sum;
                     }
                 }
             }
@@ -178,15 +162,17 @@ namespace Connection {
             computed_ = true;
         }
 
-
-        Real operator()(size_t i, size_t j, size_t k) const {
+        Real operator()(size_t k, size_t i, size_t j) const {
+            #ifdef DEBUG_MATH
             if(!computed_) throw std::runtime_error("ChernConnection: Compute not called.");
-            return gamma_[i](j, k);
+            #endif
+            return gamma_[k](i, j);
         }
 
-
         Real getN(size_t i, size_t j) const {
+             #ifdef DEBUG_MATH
             if(!computed_) throw std::runtime_error("ChernConnection: Compute not called.");
+            #endif
             return non_linear_N_(i, j);
         }
     };

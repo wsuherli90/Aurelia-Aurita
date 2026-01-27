@@ -117,7 +117,6 @@ namespace RiemannianOpt {
             return x_new;
         }
         
-        // Configuration
         void setTrustRegionRadius(Real delta) { trust_region_radius_ = delta; }
     };
 

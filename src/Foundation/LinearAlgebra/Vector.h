@@ -42,7 +42,6 @@ namespace Math {
         Vector& operator=(const Vector&) = default;
 
 
-        // 2. Accessors
         T& operator[](size_t i) {
             #ifdef DEBUG_MATH
             if (i >= N) throw std::out_of_range("Vector[]: Index out of bounds");

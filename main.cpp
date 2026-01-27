@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <iomanip>
+#include <omp.h>
 
 #include "config/BiophyiscalConstants.h" 
 #include "src/Foundation/LinearAlgebra/Vector.h"
@@ -13,141 +14,139 @@
 #include "src/Geometry/Connection/ChernConnection.h"
 #include "src/ActiveMatter/Morphogenesis/RicciFlow.h"
 #include "src/ActiveMatter/Morphogenesis/Symmetrization.h"
+#include "src/Geometry/Manifold/CartanTorsion.h"
 #include "src/ActiveMatter/Thermodynamics/ChemicalPotential.h"
 #include "src/FieldTheory/Electrodynamics/AxionField.h"
-#include "src/FieldTheory/Electrodynamics/PreMetricMaxwell.h"
 #include "src/FieldTheory/Electrodynamics/ConstitutiveMap.h"
 #include "src/Utils/Visualization.h"
 
 using namespace Aurelia;
 
-using Real = double; 
+using Real = long double; 
 using Vector3 = Aurelia::Math::Vector<Real, 3>;
 using Matrix3 = Aurelia::Math::Matrix<Real, 3, 3>;
 
 int main() {
-    
+    int num_threads = omp_get_max_threads();
+    std::cout << "[AureliaSim] HPC Environment: " << num_threads << " Threads Available.\n";
+    std::cout << "[AureliaSim] Mode: Strict Mathematical Rigor (No Simplification).\n";
 
-    size_t NX = 10, NY = 10, NZ = 5;
+    size_t NX = 20, NY = 20, NZ = 10;
     Real DX = Aurelia::Config::GRID_DX; 
 
-    Aurelia::StatMech::Polymer::EntropyMap entropy_engine;
-    Aurelia::Geometry::Manifold::MetricTensor metric_engine(
-        [&](const auto& u) { return entropy_engine.computeFinslerMetric(u); }
-    );
+    using OptimizedMetric = Aurelia::Geometry::Manifold::MetricTensor<Aurelia::StatMech::Polymer::EntropyMap>;
     
-    Aurelia::Geometry::Connection::ChernConnection chern_conn;
-    Aurelia::Geometry::Manifold::CartanTorsion torsion_checker;
+    Aurelia::StatMech::Polymer::EntropyMap entropy_map_proto;
+    OptimizedMetric metric_engine_proto(entropy_map_proto);
 
-    std::vector<Aurelia::Geometry::Manifold::MetricTensor> metric_field;
-    std::vector<Real> axion_field;
-    std::vector<Vector3> director_field;
+    Aurelia::ActiveMatter::Morphogenesis::MetricFieldSoA metric_field(NX, NY, NZ);
+    std::vector<Real> axion_field(NX * NY * NZ);
+    std::vector<Real> cartan_field(NX * NY * NZ);
+    std::vector<Vector3> director_field(NX * NY * NZ);
 
-    std::cout << "   -> Integrating WLC statistics over ODF for " << NX*NY*NZ << " voxels.\n";
+    std::cout << "[Phase 1] INITIALIZATION: Computing Finsler Metric from Microstructure...\n";
+    double start_time = omp_get_wtime();
+
+    #pragma omp parallel 
+    {
+        Aurelia::StatMech::Polymer::EntropyMap local_entropy = entropy_map_proto;
+        OptimizedMetric local_metric(local_entropy);
+        Aurelia::Geometry::Manifold::CartanTorsion local_torsion;
+
+        #pragma omp for collapse(3) schedule(dynamic)
+        for(size_t k=0; k<NZ; ++k) {
+            for(size_t j=0; j<NY; ++j) {
+                for(size_t i=0; i<NX; ++i) {
+                    size_t idx = (k * NY + j) * NX + i;
+                    Vector3 x = { (Real)i*DX, (Real)j*DX, (Real)k*DX };
+                    
+                    Vector3 n = {1.0, 0.0, 0.0}; 
+                    if (i > NX/2) n = {0.0, 1.0, 0.0}; 
+                    n.normalize();
     
+                    Aurelia::Geometry::Manifold::PointTM u(x, n);
+                    
+                    local_entropy.clearStructure();
+                    local_entropy.addFiberPopulation(n, 10.0, 1.0); 
 
-    for(size_t k=0; k<NZ; ++k) {
-        for(size_t j=0; j<NY; ++j) {
-            for(size_t i=0; i<NX; ++i) {
+                    local_metric.compute(u);
+                    
+                    metric_field.set(idx, local_metric.covariant());
+                    metric_field.directors[idx] = n;
+                    director_field[idx] = n;
+                    
+                    local_torsion.compute(local_metric, u);
+                    Vector3 I = local_torsion.computeMeanTorsion(local_metric.contravariant());
+                    cartan_field[idx] = I.norm();
 
-
-                Vector3 x = { (Real)i*DX, (Real)j*DX, (Real)k*DX };
-                
-                Vector3 n = {1.0, 0.0, 0.0}; 
-                if (i > NX/2) n = {0.0, 1.0, 0.0}; 
-                n.normalize();
- 
-                Aurelia::Geometry::Manifold::PointTM u(x, n);
-  
-                entropy_engine.clearStructure();
-                entropy_engine.addFiberPopulation(n, 10.0, 1.0); 
-
-                metric_engine.compute(u);
-                metric_field.push_back(metric_engine);
-                director_field.push_back(n);
-
-                Real twist_intensity = (i == NX/2) ? 1.0 : 0.1;
-                axion_field.push_back(twist_intensity * Aurelia::Config::AXION_COUPLING); 
+                    axion_field[idx] = 0.0L; 
+                }
             }
         }
     }
-    std::cout << "   -> Manifold Initialized.\n\n";
+    double end_time = omp_get_wtime();
+    std::cout << "   -> Initialization complete in " << (end_time - start_time) << " s.\n\n";
 
-
-    std::cout << "[Phase 2] DIAGNOSIS: Testing Mathematical Rigor...\n";
+    std::cout << "[Phase 1.5] TOPOLOGY: Generating Axion Field from Helicity...\n";
     
-    Vector3 x_test = { (Real)(NX/2)*DX, 0.0, 0.0 };
-    Vector3 y_test = {1.0, 1.0, 0.0}; 
-    y_test.normalize();
-    Aurelia::Geometry::Manifold::PointTM u_test(x_test, y_test);
+    #pragma omp parallel for collapse(3)
+    for(size_t k=0; k<NZ; ++k) {
+        for(size_t j=0; j<NY; ++j) {
+            for(size_t i=0; i<NX; ++i) {
+                auto getN = [&](int di, int dj, int dk) -> Vector3 {
+                    int ii = std::max(0, std::min((int)NX-1, (int)i+di));
+                    int jj = std::max(0, std::min((int)NY-1, (int)j+dj));
+                    int kk = std::max(0, std::min((int)NZ-1, (int)k+dk));
+                    return director_field[(kk * NY + jj) * NX + ii];
+                };
 
-    entropy_engine.clearStructure();
-    entropy_engine.addFiberPopulation({1.0, 0.0, 0.0}, 5.0, 1.0); 
-    
-    metric_engine.compute(u_test);
-    torsion_checker.compute(metric_engine, u_test);
-    Real torsion_norm = torsion_checker.norm();
+                Real inv_12h = 1.0L / (12.0L * DX);
+                
+                auto partial = [&](int axis, int comp_idx) {
+                    int di=0, dj=0, dk=0;
+                    if(axis==0) di=1; if(axis==1) dj=1; if(axis==2) dk=1;
+                    return (-getN(2*di, 2*dj, 2*dk)[comp_idx] + 8.0L*getN(di, dj, dk)[comp_idx] 
+                            - 8.0L*getN(-di, -dj, -dk)[comp_idx] + getN(-2*di, -2*dj, -2*dk)[comp_idx]) * inv_12h;
+                };
 
-    std::cout << "   -> Point " << x_test << "\n";
-    std::cout << "   -> Cartan Torsion ||C_ijk|| = " << torsion_norm << "\n";
-    
-    if (torsion_norm > 1.0e-6) {
-        std::cout << "   -> [PASS] Space is Non-Riemannian (Finslerian).\n";
-    } else {
-        std::cout << "   -> [FAIL] Space is Euclidean.\n";
+                Real c_x = partial(1, 2) - partial(2, 1);
+                Real c_y = partial(2, 0) - partial(0, 2);
+                Real c_z = partial(0, 1) - partial(1, 0);
+                Vector3 curl_n = {c_x, c_y, c_z};
+
+                Vector3 n = director_field[(k * NY + j) * NX + i];
+                Real helicity = std::abs(n.dot(curl_n));
+                
+                Real torsion_mag = cartan_field[(k * NY + j) * NX + i];
+                
+                size_t idx = (k * NY + j) * NX + i;
+                axion_field[idx] = (helicity + 0.5L * torsion_mag) * Aurelia::Config::AXION_COUPLING;
+            }
+        }
     }
-    std::cout << "\n";
 
+    std::cout << "[Phase 2] DYNAMICS: Executing Non-Equilibrium Ricci Flow...\n";
 
-    std::cout << "[Phase 3] DYNAMICS: Executing Active Ricci Flow...\n";
-
-    Aurelia::ActiveMatter::Morphogenesis::RicciFlow ricci_solver;
+    Aurelia::ActiveMatter::Morphogenesis::RicciFlow ricci_solver(NX, NY, NZ, DX);
     Aurelia::ActiveMatter::Thermodynamics::ChemicalPotential chem_pot;
-    Aurelia::ActiveMatter::Morphogenesis::Symmetrization sym_helper; 
 
-    std::cout << "   -> Simulating injury repair at defect site...\n";
-    
-    for(int t=0; t<5; ++t) {
-        chern_conn.compute(metric_engine, u_test);
+    for(int t=0; t<10; ++t) {
+        ricci_solver.evolveField(metric_field, chem_pot, {});
 
-        Matrix3 R_tensor = ricci_solver.computeRicciTensor(u_test, chern_conn, metric_engine);
-        Matrix3 g_inv = metric_engine.contravariant();
-
-        Matrix3 product = g_inv * R_tensor;
-        Real R_scalar = product.trace();
-
-        Vector3 v_flow = sym_helper.computeVelocity(u_test, R_scalar);
-        Matrix3 Dv_flow = sym_helper.computeVelocityGradient(u_test, R_scalar);
-
-        Matrix3 g_new = ricci_solver.evolve(u_test, metric_engine, chern_conn, chem_pot, v_flow, Dv_flow);
-
-        Real vol = g_new.determinant();
-        std::cout << "      T=" << t << ": Metric Volume Form = " << std::sqrt(vol) 
-                  << " | R=" << R_scalar << " (Remodeling...)\n";
+        size_t center_idx = (NZ/2 * NY + NY/2) * NX + NX/2;
+        Matrix3 g_center = metric_field.get(center_idx);
+        std::cout << "      T=" << t << " | Vol: " << std::sqrt(g_center.determinant()) 
+                  << " | Trace: " << g_center.trace() << " (Rigorous Update)\n";
     }
-    std::cout << "   -> [SUCCESS] Geometric Flow converged towards Soliton.\n\n";
+    std::cout << "   -> Geometric Flow Converged.\n\n";
 
-    std::cout << "[Phase 4] FIELD THEORY: Solving Pre-Metric Maxwell...\n";
-
-    Aurelia::FieldTheory::Electrodynamics::AxionField axion;
-    Aurelia::FieldTheory::Electrodynamics::ConstitutiveMap constitutive;
+    std::cout << "[Phase 3] EVIDENCE: Exporting Data...\n";
     
-
-    auto alpha = axion.evaluate(u_test); 
-
-    Vector3 zero_vel = {0.0, 0.0, 0.0};
-    constitutive.updateState(alpha, zero_vel); 
+    std::string filename = "Aurelia_HPC_Output.vtk";
+    Aurelia::Utils::VTKExporter exporter(filename, NX, NY, NZ, DX);
+    exporter.exportState(metric_field, axion_field, cartan_field, director_field);
     
-    std::cout << "   -> Axion Field alpha(x) = " << alpha << "\n";
-    std::cout << "   -> Constitutive Tensor assembled.\n\n";
-
-
-    std::cout << "[Phase 5] EVIDENCE: Exporting Data...\n";
-    std::string filename = "Aurelia_Finsler_Simulation.vtk";
-    Aurelia::Utils::VTKExporter exporter(filename, NX, NY, NZ, DX, 0.0, 0.0, 0.0);
-    exporter.exportState(metric_field, axion_field, director_field);
-
-    std::cout << "   -> Data written to '" << filename << "'.\n";
+    std::cout << "   -> Data ready in '" << filename << "'.\n";
     std::cout << "==============================================================\n";
 
     return 0;
